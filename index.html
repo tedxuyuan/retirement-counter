@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>退休倒计时</title>
+    <style>
+        :root {
+            --text-color: #f0f0f0;
+            --bg-color-start: #2d3436;
+            --bg-color-end: #000000;
+            --flip-card-bg: #1c1c1c;
+            --flip-card-text-color: #ffffff;
+            --input-bg-color: rgba(255, 255, 255, 0.1);
+            --input-border-color: #888;
+            --button-bg-color: #007bff;
+            --button-hover-bg-color: #0056b3;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-family: "微软雅黑", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            cursor: none;
+            position: relative;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 3em; /* Relative to container's JS-set font-size */
+            margin-bottom: 0.2em;
+            text-shadow: 0 0 15px rgba(0,0,0,0.7);
+        }
+
+        #countdown {
+            display: flex;
+            width: 95%;
+            max-width: 1600px;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 1em; /* Countdown numbers are the base size (relative to container) */
+        }
+
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .flip-card-group {
+            display: flex;
+            gap: 0.1em;
+        }
+
+        .time-unit-label {
+            font-size: 1.5em; /* Relative to #countdown's font-size */
+            font-weight: normal;
+            opacity: 0.8;
+            margin-top: 0.5em;
+        }
+
+        /* Flip card styles */
+        .flip-card {
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            border-radius: .1em;
+            font-size: 10em; /* Inherit from #countdown */
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .top, .bottom, .flip-card .top-flip, .flip-card .bottom-flip {
+            height: 1.5em;
+            padding: .25em;
+            overflow: hidden;
+            color: var(--flip-card-text-color);
+            background: var(--flip-card-bg);
+            box-sizing: border-box;
+            width: 1.2em; /* Fixed width for alignment */
+        }
+
+        .top, .flip-card .top-flip {
+            border-bottom: 1px solid rgba(0,0,0,0.4);
+            border-top-left-radius: 3em;
+            border-top-right-radius: 3em;
+            align-items: flex-start;
+            display: flex;
+        }
+
+        .bottom, .flip-card .bottom-flip {
+            border-bottom-left-radius: 3em;
+            border-bottom-right-radius: 3em;
+            align-items: flex-end;
+            display: flex;
+        }
+        
+        .flip-card .top, .flip-card .top-flip {
+            transform: translateY(50%);
+            border-radius: 0.1em;
+        }
+        
+        .flip-card .bottom, .flip-card .bottom-flip {
+            transform: translateY(-50%);
+            border-radius: 0.1em;
+        }
+
+        .flip-card .top-flip {
+            position: absolute;
+            width: 100%;
+            transform-origin: bottom;
+            animation: flip-top .3s ease-in;
+        }
+
+        @keyframes flip-top {
+            100% { transform: translateY(50%) rotateX(90deg); }
+        }
+
+        .flip-card .bottom-flip {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            transform-origin: top;
+            transform: translateY(-50%) rotateX(90deg);
+            animation: flip-bottom .3s ease-out .3s;
+        }
+
+        @keyframes flip-bottom {
+            100% { transform: translateY(-50%) rotateX(0deg); }
+        }
+
+        #settings {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px;
+            background: var(--input-bg-color);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s, visibility 0.5s;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 10;
+        }
+
+        body:hover #settings {
+            opacity: 1;
+            visibility: visible;
+            cursor: default;
+        }
+
+        #settings input, #settings select, #settings button {
+            font-size: 1rem;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border-color);
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+            font-family: "微软雅黑", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        
+        #settings select option {
+            background-color: #333;
+            color: var(--text-color);
+        }
+
+        #settings button {
+            border: none;
+            background-color: var(--button-bg-color);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #settings button:hover {
+            background-color: var(--button-hover-bg-color);
+        }
+
+        #fullscreen-tip {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            z-index: 10;
+            pointer-events: none; /* So it doesn't interfere with other elements */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="night">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <div class="container">
+        <h1>牛马距离退休还有：</h1>
+        <div id="countdown">
+            <div class="time-unit">
+                <div class="flip-card-group" data-unit="days">
+                    <!-- JS will generate cards -->
+                </div>
+                <span class="time-unit-label">天</span>
+            </div>
+            <div class="time-unit">
+                <div class="flip-card-group" data-unit="hours">
+                    <!-- JS will generate cards -->
+                </div>
+                <span class="time-unit-label">时</span>
+            </div>
+            <div class="time-unit">
+                <div class="flip-card-group" data-unit="minutes">
+                    <!-- JS will generate cards -->
+                </div>
+                <span class="time-unit-label">分</span>
+            </div>
+            <div class="time-unit">
+                <div class="flip-card-group" data-unit="seconds">
+                    <!-- JS will generate cards -->
+                </div>
+                <span class="time-unit-label">秒</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings">
+        <input type="date" id="birthdate" title="设置您的出生日期">
+        <select id="gender" title="选择您的性别">
+            <option value="male">男</option>
+            <option value="female">女</option>
+        </select>
+        <button id="start-timer">开始倒计时</button>
+
+        <div id="fullscreen-tip">按F11全屏</div>
+    </div>   
+
+
+    <script>
+        const startButton = document.getElementById('start-timer');
+        const birthdateInput = document.getElementById('birthdate');
+        const genderInput = document.getElementById('gender');
+        const settingsPane = document.getElementById('settings');
+
+        let countdownInterval;
+        let hideSettingsTimeout;
+        let retirementDate;
+        let previousTime = { days: -1, hours: -1, minutes: -1, seconds: -1 };
+
+        // --- Flip Clock Logic ---
+        function createFlipCard(container, digits) {
+            container.innerHTML = '';
+            for (let i = 0; i < digits; i++) {
+                const card = document.createElement('div');
+                card.classList.add('flip-card');
+                card.innerHTML = `
+                    <div class="top">0</div>
+                    <div class="bottom">0</div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function flip(flipCard, newNumber) {
+            const topHalf = flipCard.querySelector(".top");
+            const bottomHalf = flipCard.querySelector(".bottom");
+            const startNumber = parseInt(topHalf.textContent);
+            if (newNumber == startNumber) return;
+
+            const topFlip = document.createElement("div");
+            topFlip.classList.add("top-flip");
+            const bottomFlip = document.createElement("div");
+            bottomFlip.classList.add("bottom-flip");
+
+            topHalf.textContent = startNumber;
+            bottomHalf.textContent = startNumber;
+            topFlip.textContent = startNumber;
+            bottomFlip.textContent = newNumber;
+
+            topFlip.addEventListener("animationstart", () => {
+                topHalf.textContent = newNumber;
+            });
+            topFlip.addEventListener("animationend", () => {
+                topFlip.remove();
+            });
+            bottomFlip.addEventListener("animationend", () => {
+                bottomHalf.textContent = newNumber;
+                bottomFlip.remove();
+            });
+            flipCard.append(topFlip, bottomFlip);
+        }
+
+        function updateFlipCards(unit, value, digits) {
+            const container = document.querySelector(`.flip-card-group[data-unit="${unit}"]`);
+            const paddedValue = String(value).padStart(digits, '0');
+            const flipCards = container.querySelectorAll('.flip-card');
+            for (let i = 0; i < flipCards.length; i++) {
+                flip(flipCards[i], paddedValue[i]);
+            }
+        }
+
+        // --- Main Countdown Logic ---
+        function calculateRetirementDate(birthdate, gender) {
+            const birth = new Date(birthdate);
+            const retirementAge = gender === 'male' ? 60 : 55;
+            return new Date(birth.getFullYear() + retirementAge, birth.getMonth(), birth.getDate());
+        }
+
+        function updateCountdown() {
+            if (!retirementDate) return;
+
+            const now = new Date();
+            const diff = retirementDate.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                clearInterval(countdownInterval);
+                document.querySelector('h1').innerText = "恭喜您，已经光荣退休！";
+                if (previousTime.days !== 0) updateFlipCards('days', 0, 4);
+                if (previousTime.hours !== 0) updateFlipCards('hours', 0, 2);
+                if (previousTime.minutes !== 0) updateFlipCards('minutes', 0, 2);
+                if (previousTime.seconds !== 0) updateFlipCards('seconds', 0, 2);
+                previousTime = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            if (days !== previousTime.days) {
+                updateFlipCards('days', days, 4);
+                previousTime.days = days;
+            }
+            if (hours !== previousTime.hours) {
+                updateFlipCards('hours', hours, 2);
+                previousTime.hours = hours;
+            }
+            if (minutes !== previousTime.minutes) {
+                updateFlipCards('minutes', minutes, 2);
+                previousTime.minutes = minutes;
+            }
+            if (seconds !== previousTime.seconds) {
+                updateFlipCards('seconds', seconds, 2);
+                previousTime.seconds = seconds;
+            }
+        }
+
+        function startCountdown() {
+            const birthdate = birthdateInput.value;
+            const gender = genderInput.value;
+
+            if (!birthdate) {
+                alert('请输入您的出生日期！');
+                return;
+            }
+
+            localStorage.setItem('birthdate', birthdate);
+            localStorage.setItem('gender', gender);
+
+            retirementDate = calculateRetirementDate(birthdate, gender);
+            
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            // Reset previous time to force a full update on start
+            previousTime = { days: -1, hours: -1, minutes: -1, seconds: -1 };
+
+            updateCountdown(); // Initial call
+            countdownInterval = setInterval(updateCountdown, 1000);
+            
+            settingsPane.style.opacity = '0';
+            settingsPane.style.visibility = 'hidden';
+        }
+
+        function loadSettings() {
+            const savedBirthdate = localStorage.getItem('birthdate');
+            const savedGender = localStorage.getItem('gender');
+
+            if (savedBirthdate) {
+                birthdateInput.value = savedBirthdate;
+            } else {
+                birthdateInput.value = '1990-01-01';
+            }
+            
+            if (savedGender) {
+                genderInput.value = savedGender;
+            }
+
+            if (savedBirthdate) {
+                startCountdown();
+            }
+        }
+        
+        // --- Event Listeners & Init ---
+        startButton.addEventListener('click', startCountdown);
+
+        document.body.addEventListener('mousemove', () => {
+            document.body.style.cursor = 'default';
+            settingsPane.style.opacity = '1';
+            settingsPane.style.visibility = 'visible';
+            
+            clearTimeout(hideSettingsTimeout);
+            hideSettingsTimeout = setTimeout(() => {
+                if (!settingsPane.matches(':hover')) {
+                    document.body.style.cursor = 'none';
+                    settingsPane.style.opacity = '0';
+                    settingsPane.style.visibility = 'hidden';
+                }
+            }, 3000);
+        });
+        
+        // --- Dynamic Resizing Logic ---
+        const containerElement = document.querySelector('.container');
+
+        function resizeCountdown() {
+            // Set a baseline font size for measurement
+            containerElement.style.fontSize = '10px';
+
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+
+            // Measure the container's dimensions at the baseline font size
+            const containerScrollHeight = containerElement.scrollHeight;
+            const containerScrollWidth = containerElement.scrollWidth;
+            
+            // If measurement is zero, abort to prevent division by zero
+            if (containerScrollHeight === 0 || containerScrollWidth === 0) {
+                return;
+            }
+
+            // Calculate the scaling ratio based on both height and width
+            const heightRatio = viewportHeight / containerScrollHeight;
+            const widthRatio = viewportWidth / containerScrollWidth;
+
+            // Use the smaller ratio to ensure the entire container fits within the viewport
+            const scale = Math.min(heightRatio, widthRatio) * 0.9; // Use 0.9 to leave a bit of margin
+
+            // Calculate and apply the new font size to the container
+            const newSize = 10 * scale;
+            containerElement.style.fontSize = `${newSize}px`;
+        }
+
+        window.addEventListener('load', () => {
+            // Create the initial flip cards
+            createFlipCard(document.querySelector('.flip-card-group[data-unit="days"]'), 4);
+            createFlipCard(document.querySelector('.flip-card-group[data-unit="hours"]'), 2);
+            createFlipCard(document.querySelector('.flip-card-group[data-unit="minutes"]'), 2);
+            createFlipCard(document.querySelector('.flip-card-group[data-unit="seconds"]'), 2);
+            
+            loadSettings();
+            resizeCountdown(); // Initial resize
+        });
+
+        window.addEventListener('resize', resizeCountdown); // Resize on window change
+
+    </script>
+    
+
+</body>
+</html>
